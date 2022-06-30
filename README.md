@@ -13,6 +13,7 @@ Create resources:
 ```
 cp template.local.env local.env
 edit local.env
+source local.env
 terraform init
 terraform apply
 ```
