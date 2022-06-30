@@ -16,6 +16,7 @@ output "cloud" {
       ipv4_address = instance.primary_network_interface[0].primary_ipv4_address
       floating_ip  = zone.floating_ips[instance_index].address
       ssh          = "ssh root@${zone.floating_ips[instance_index].address}"
+      id           = instance.id
     } }
   } }
 }

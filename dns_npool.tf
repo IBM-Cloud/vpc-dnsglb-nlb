@@ -1,3 +1,55 @@
+# one origin pool for each zone (each nlb), with a health check from same zone
+resource "ibm_dns_glb_pool" "cloud" {
+  for_each                  = module.zone
+  depends_on                = [ibm_dns_zone.widgets_cogs]
+  name                      = each.value.name
+  instance_id               = ibm_resource_instance.dns.guid
+  enabled                   = true
+  healthy_origins_threshold = 1
+  origins {
+    name    = each.value.zone
+    address = each.value.lb.hostname
+    enabled = true
+  }
+  monitor             = ibm_dns_glb_monitor.cloud.monitor_id
+  healthcheck_region  = var.region
+  healthcheck_subnets = [each.value.subnet_dns.resource_crn]
+}
+
+resource "ibm_dns_glb_pool" "test" {
+  for_each                  = ibm_is_instance.test
+  depends_on                = [ibm_dns_zone.widgets_cogs]
+  name                      = each.value.name
+  instance_id               = ibm_resource_instance.dns.guid
+  enabled                   = true
+  healthy_origins_threshold = 1
+  origins {
+    name    = each.value.name
+    address = each.value.primary_network_interface[0].primary_ipv4_address
+    enabled = true
+  }
+  monitor             = ibm_dns_glb_monitor.cloud.monitor_id
+  healthcheck_region  = var.region
+  healthcheck_subnets = [ibm_is_subnet.test.resource_crn]
+}
+
+resource "ibm_dns_glb" "widgets" {
+  name          = "backend"
+  enabled       = true
+  instance_id   = ibm_resource_instance.dns.guid
+  zone_id       = ibm_dns_zone.widgets_cogs.zone_id
+  description   = "ibm_dns_glb description"
+  ttl           = 120
+  default_pools = [for key, pool in ibm_dns_glb_pool.cloud : pool.pool_id]
+  fallback_pool = ibm_dns_glb_pool.test[1].pool_id
+  dynamic "az_pools" {
+    for_each = module.zone
+    content {
+      availability_zone = az_pools.value.zone
+      pools             = [ibm_dns_glb_pool.cloud[az_pools.key].pool_id]
+    }
+  }
+}
 
 resource "ibm_is_vpc_address_prefix" "test" {
   for_each = local.test_zones
@@ -26,7 +78,6 @@ locals {
       id = data.ibm_is_image.os.id
     }
   }
-
 }
 
 resource "ibm_is_subnet" "test" {
@@ -76,64 +127,4 @@ resource "ibm_is_floating_ip" "zone" {
   name           = each.value.name
   target         = each.value.primary_network_interface[0].id
   resource_group = local.test.resource_group.id
-}
-
-resource "ibm_dns_glb_pool" "test" {
-  for_each                  = ibm_is_instance.test
-  depends_on                = [ibm_dns_zone.widgets_cogs]
-  name                      = each.value.name
-  instance_id               = ibm_resource_instance.dns.guid
-  enabled                   = true
-  healthy_origins_threshold = 1
-  origins {
-    name    = each.value.name
-    address = each.value.primary_network_interface[0].primary_ipv4_address
-    enabled = true
-  }
-  monitor             = ibm_dns_glb_monitor.cloud.monitor_id
-  healthcheck_region  = var.region
-  healthcheck_subnets = [ibm_is_subnet.test.resource_crn]
-}
-
-#----------------------------------------------------------------
-# one origin pool for each zone (each nlb), with a health check from same zone
-resource "ibm_dns_glb_pool" "cloud" {
-  for_each                  = module.zone
-  depends_on                = [ibm_dns_zone.widgets_cogs]
-  name                      = each.value.name
-  instance_id               = ibm_resource_instance.dns.guid
-  enabled                   = true
-  healthy_origins_threshold = 1
-  origins {
-    name    = each.value.zone
-    address = each.value.lb.hostname
-    enabled = true
-  }
-  monitor             = ibm_dns_glb_monitor.cloud.monitor_id
-  healthcheck_region  = var.region
-  healthcheck_subnets = [each.value.subnet_dns.resource_crn]
-}
-
-resource "ibm_dns_glb" "widgets" {
-  name        = "backend"
-  enabled     = true
-  instance_id = ibm_resource_instance.dns.guid
-  zone_id     = ibm_dns_zone.widgets_cogs.zone_id
-  description = "ibm_dns_glb description"
-  ttl         = 120
-  # todo
-  # another option:
-  default_pools = [for key, pool in ibm_dns_glb_pool.cloud : pool.pool_id]
-  #fallback_pool = ibm_dns_glb_pool.cloud[0].pool_id
-  # test0
-  #default_pools = [ibm_dns_glb_pool.test[0].pool_id]
-  # test1
-  fallback_pool = ibm_dns_glb_pool.test[1].pool_id
-  dynamic "az_pools" {
-    for_each = module.zone
-    content {
-      availability_zone = az_pools.value.zone
-      pools             = [ibm_dns_glb_pool.cloud[az_pools.key].pool_id]
-    }
-  }
 }

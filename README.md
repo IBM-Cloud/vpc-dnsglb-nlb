@@ -7,7 +7,9 @@ This is a companion repository to the following blog post
 
 ## Depoy resources
 
-### Desktop Terraform
+### Terraform
+
+See Schematics below to use IBM Cloud Schematics.
 
 Create resources:
 ```
@@ -23,35 +25,23 @@ Destroy resources:
 terraform destroy
 ```
 
-### Schematics
-
-Schematics is an IBM Cloud service that builds resources and maintais state.
-
-Create resources using schematics:
-- Log in to the IBM Cloud.
-- Click Schematics Workspaces.
-- Click Create workspace to create a new workspace.
-- Enter this respository, https://github.com/IBM-Cloud/vpc-dnsglb-nlb,for the GitHub repository.
-- Select Terraform version terraform_v1.1.
-- Click Next.
-- Optionally change the Workspace details and click Next.
-- Click Create.
-
-In the new workspace Settings panel initialize the variables by clicking the menu selection on the left. You must provide values for the variables that do not have defaults.
-
-- Click Apply plan to create the resources. Wait for completion.
-
-Destroy resources using schematics:
-
-Navigate to the the Schematics Workspace and open your workspace:
-- Click Actions > Destroy resources.
-- Wait for resources to be destroyed.
-- Click Actions > Delete workspace.
+There is terraform output for **onprem** and **cloud**.
 
 ## On premises
 
+
 The default ubuntu DNS resolver can be hard to follow.  Follow the instructions below to disable the default and use [coredns](https://coredns.io/)
 
+```
+$ terraform output onprem
+{
+  "floating_ip" = "52.118.191.148"
+  "glb" = "backend.widgets.cogs"
+  "ssh" = "ssh root@52.118.191.148"
+}
+```
+
+### coredns
 
 ```
 ssh root@...
@@ -75,7 +65,8 @@ chattr +i /etc/resolv.conf
 cat /etc/resolv.conf
 ls -l /etc/resolv.conf
 
-# coredns will resolve on localhost port 53.  DNS_SERVER_IPS are the custom resolver locations
+# coredns will resolve on localhost port 53.  DNS_SERVER_IPS are the custom resolver locations and was initialized
+# by the terraform ibm_is_instance resource user_data
 cat > Corefile <<EOF
 .:53 {
     log
@@ -86,6 +77,7 @@ EOF
 cat Corefile
 ./coredns
 ```
+
 
 Create a second ssh session to the on premises ubuntu instance that is running coredns, copy/paste the suggested output from the terraform output.  A session will look like this:
 ```
@@ -98,73 +90,155 @@ curl $glb/instance
 
 
 while sleep 1; do curl --connect-timeout 2 $glb/instance; done
+```
+## start/stop instances with ibmcloud cli
+If you have the ibmcloud cli you can stop/start the instances from a third terminal.  Or you can skip this section and use the IBM Cloud Console.
+```
+$ terraform output cloud
+{
+  "0" = {
+    "dns_location" = "10.0.0.149"
+    "instances" = {
+      "0" = {
+        "floating_ip" = "52.118.144.234"
+        "id" = "0717_7c69b1c0-8e7c-485a-990c-2e90e201ee93
+...
+$ ibmcloud is instance-stop -f 0717_7c69b1c0-8e7c-485a-990c-2e90e201ee93
+Creating action stop for instance 0717_7c69b1c0-8e7c-485a-990c-2e90e201ee93 under account ...
 
+Type      stop
+Created   2022-06-30T13:25:25-07:00
 ```
 
-## Watching failures
-Visit the [VPC Instances](https://cloud.ibm.com/vpc-ext/compute/vs) and notice there are instances in each zone based on variable instances.  The instances can be **Stopped** using the menu on the far right.  Click on the menu then click **Stop** on a few and observe the curl in the while loop.  When you stop all of the instances in a zone notice the failure pattern.
+## start/stop instances with IBM Cloud Console
+In a browser visit the [VPC Instances](https://cloud.ibm.com/vpc-ext/compute/vs) and notice there are instances with names based on zones.  The instances can be **Stopped** using the menu on the far right.  Click on the menu then click **Stop** on a few and observe the curl in the while loop.  When you stop all of the instances in a zone notice the failure pattern.
 
-Example, stopping both us-south-1-0 and us-south-1-1:
+Example, stopping us-south-1-0:
 
 ```
 root@dnsglb-onprem:~# while sleep 1; do curl --connect-timeout 2 $glb/instance; done
 ...
 dnsglb-us-south-1-0
 curl: (7) Failed to connect to backend.widgets.cogs port 80: Connection refused
-dnsglb-us-south-2-1
-curl: (7) Failed to connect to backend.widgets.cogs port 80: Connection refused
 dnsglb-us-south-2-0
-dnsglb-us-south-3-1
-dnsglb-us-south-3-1
 curl: (7) Failed to connect to backend.widgets.cogs port 80: Connection refused
-dnsglb-us-south-3-1
-dnsglb-us-south-3-1
-curl: (7) Failed to connect to backend.widgets.cogs port 80: Connection refused
-curl: (7) Failed to connect to backend.widgets.cogs port 80: Connection refused
-curl: (7) Failed to connect to backend.widgets.cogs port 80: Connection refused
-dnsglb-us-south-3-1
-dnsglb-us-south-2-1
-curl: (7) Failed to connect to backend.widgets.cogs port 80: Connection refused
-curl: (7) Failed to connect to backend.widgets.cogs port 80: Connection refused
-dnsglb-us-south-3-1
-dnsglb-us-south-3-1
+...
 dnsglb-us-south-2-0
-dnsglb-us-south-2-1
 dnsglb-us-south-2-0
+dnsglb-us-south-2-0
+...
 ```
 
-Start up the instances to see them start up again.
+Start up the instances to see them start up again:
+
+```
+$ ibmcloud is instance-start 0717_7c69b1c0-8e7c-485a-990c-2e90e201ee93
+Creating action start for instance 0717_7c69b1c0-8e7c-485a-990c-2e90e201ee93 under account ...
+
+Type      start
+Created   2022-06-30T13:29:08-07:00
+```
 
 ## Troubleshooting
-
-Notes:
-
-The terraform output shows info sorted into zone and instance
-
-
-
-
-
-## todo
-
-maybe
+The coredns ssh session should be generating two log messages each time a curl is executed in the second ssh session.  Like ths:
 ```
-cat > /etc/NetworkManager/NetworkManager.conf <<EOF
-dns=none
-EOF
-service network-manager restart
+[INFO] 127.0.0.1:57408 - 35537 "A IN backend.widgets.cogs. udp 38 false 512" NOERROR qr,aa,rd,ra 74 0.000922732s
+[INFO] 127.0.0.1:57408 - 56028 "AAAA IN backend.widgets.cogs. udp 38 false 512" NOERROR qr,aa,rd,ra 149 0.000998671s
 ```
 
-ln -s /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+```
+$ terraform output cloud 
+{
+  "0" = {
+    "dns_location" = "10.0.0.149"
+    "instances" = {
+      "0" = {
+        "floating_ip" = "52.118.144.234"
+        "ipv4_address" = "10.0.0.4"
+        "ssh" = "ssh root@52.118.144.234"
+      }
+    }
+    "lb_curl" = "curl 92cf5ee3-us-south.lb.appdomain.cloud/instance"
+    "lb_hostname" = "92cf5ee3-us-south.lb.appdomain.cloud"
+    "lb_private_ips" = [
+      "10.0.0.132",
+    ]
+    "lb_public_ips" = []
+  }
+  "1" = {
+    "dns_location" = "10.0.1.149"
+    "instances" = {
+      "0" = {
+        "floating_ip" = "52.118.205.187"
+        "ipv4_address" = "10.0.1.4"
+        "ssh" = "ssh root@52.118.205.187"
+      }
+    }
+    "lb_curl" = "curl af41ca5c-us-south.lb.appdomain.cloud/instance"
+    "lb_hostname" = "af41ca5c-us-south.lb.appdomain.cloud"
+    "lb_private_ips" = [
+      "10.0.1.132",
+    ]
+    "lb_public_ips" = []
+  }
+}
+```
+
+There is one key ("0" and "1") per zone.  Notice the lb_ information.  From onprem try the lb_curl and the lb_private_ips
 
 ```
-vi /etc/systemd/resolved.conf
-  DNSStubListener=no
-vi /etc/resolv.conf
+root@dnsglb1-onprem:~# curl 92cf5ee3-us-south.lb.appdomain.cloud/instance
+dnsglb1-us-south-1-0
+root@dnsglb1-onprem:~# curl af41ca5c-us-south.lb.appdomain.cloud/instance
+dnsglb1-us-south-2-0
+root@dnsglb1-onprem:~# curl 10.0.0.132/instance
+dnsglb1-us-south-1-0
+root@dnsglb1-onprem:~# curl 10.0.1.132/instance
+dnsglb1-us-south-2-0
 ```
 
- /etc/NetworkManager/dispatcher.d/hook-network-manager
+Try ssh to the instances and curl localhost:
+
+```
+root@dnsglb1-us-south-1-0:~# curl localhost/instance
+dnsglb1-us-south-1-0
+```
+
+It will not be possible to curl the local IP address of the instances.  This is a side effect of connecting them to the NLB:
+```
+root@dnsglb1-us-south-1-0:~# curl 10.0.1.4
+^C
+```
+
+But it will be possible to curl the other intances:
+```
+root@dnsglb1-us-south-1-0:~# curl 10.0.1.132/instance
+dnsglb1-us-south-2-0
+```
 
 
-## todo
-- onprem /etc/systemd/resolved.conf
+## Schematics
+
+Schematics is an IBM Cloud service that builds resources and maintains state.  You can use this instead of terraform on your laptop.
+
+Create resources using schematics:
+- Log in to the IBM Cloud.
+- Click Schematics Workspaces.
+- Click Create workspace to create a new workspace.
+- Enter this respository, https://github.com/IBM-Cloud/vpc-dnsglb-nlb,for the GitHub repository.
+- Select Terraform version terraform_v1.1.
+- Click Next.
+- Optionally change the Workspace details and click Next.
+- Click Create.
+
+In the new workspace Settings panel initialize the variables by clicking the menu selection on the left. You must provide values for the variables that do not have defaults.
+
+- Click Apply plan to create the resources. Wait for completion.
+
+Destroy resources using schematics:
+
+Navigate to the the Schematics Workspace and open your workspace:
+- Click Actions > Destroy resources.
+- Wait for resources to be destroyed.
+- Click Actions > Delete workspace.
+##
