@@ -7,6 +7,7 @@ variable "prefix" {
 
 variable "resource_group_name" {
   description = "Resource group that will contain all the resources created by the script."
+  default     = "Default"
 }
 
 variable "ssh_key_name" {

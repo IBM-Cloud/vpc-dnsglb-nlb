@@ -20,15 +20,6 @@ resource "ibm_dns_permitted_network" "cloud" {
   type        = "vpc"
 }
 
-/*
-resource "ibm_dns_permitted_network" "onprem" {
-  instance_id = ibm_resource_instance.dns.guid
-  zone_id     = ibm_dns_zone.widgets_cogs.zone_id
-  vpc_crn     = ibm_is_vpc.onprem.crn
-  type        = "vpc"
-}
-*/
-
 resource "ibm_dns_glb_monitor" "cloud" {
   depends_on  = [ibm_dns_zone.widgets_cogs]
   name        = var.prefix

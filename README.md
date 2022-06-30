@@ -1,5 +1,52 @@
 # Regional load balancer accessable over direct link
 
+This is a companion repository to the following blog post
+
+![image](https://user-images.githubusercontent.com/6932057/176736173-ddad609c-85be-448e-a10a-d4bfbecedec4.png)
+
+
+## Depoy resources
+
+### Desktop Terraform
+
+Create resources:
+```
+cp template.local.env local.env
+edit local.env
+terraform init
+terraform apply
+```
+
+Destroy resources:
+```
+terraform destroy
+```
+
+### Schematics
+
+Schematics is an IBM Cloud service that builds resources and maintais state.
+
+Create resources using schematics:
+- Log in to the IBM Cloud.
+- Click Schematics Workspaces.
+- Click Create workspace to create a new workspace.
+- Enter this respository, https://github.com/IBM-Cloud/vpc-dnsglb-nlb,for the GitHub repository.
+- Select Terraform version terraform_v1.1.
+- Click Next.
+- Optionally change the Workspace details and click Next.
+- Click Create.
+
+In the new workspace Settings panel initialize the variables by clicking the menu selection on the left. You must provide values for the variables that do not have defaults.
+
+- Click Apply plan to create the resources. Wait for completion.
+
+Destroy resources using schematics:
+
+Navigate to the the Schematics Workspace and open your workspace:
+- Click Actions > Destroy resources.
+- Wait for resources to be destroyed.
+- Click Actions > Delete workspace.
+
 ## On premises
 
 The default ubuntu DNS resolver can be hard to follow.  Follow the instructions below to disable the default and use [coredns](https://coredns.io/)
