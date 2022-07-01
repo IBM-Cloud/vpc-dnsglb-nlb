@@ -1,15 +1,15 @@
-# Regional load balancer accessable over direct link
+# Private regional high availability for scalable workloads
 
-This is a companion repository to the following blog post
+This is a companion repository to the following blog post (link to come).
 
 ![image](https://user-images.githubusercontent.com/6932057/176736173-ddad609c-85be-448e-a10a-d4bfbecedec4.png)
 
 
-## Depoy resources
+## Deploy resources
 
 ### Terraform
 
-See Schematics below to use IBM Cloud Schematics.
+See Schematics below to use [IBM Cloud Schematics](https://cloud.ibm.com/schematics/overview).
 
 Create resources:
 ```
@@ -25,12 +25,12 @@ Destroy resources:
 terraform destroy
 ```
 
-There is terraform output for **onprem** and **cloud**.
+There is Terraform output for **onprem** and **cloud**.
 
-## On premises
+## On-premises
 
 
-The default ubuntu DNS resolver can be hard to follow.  Follow the instructions below to disable the default and use [coredns](https://coredns.io/)
+The default Ubuntu DNS resolver can be hard to follow.  Follow the instructions below to disable the default and use [coredns](https://coredns.io/)
 
 ```
 $ terraform output onprem
@@ -79,7 +79,7 @@ cat Corefile
 ```
 
 
-Create a second ssh session to the on premises ubuntu instance that is running coredns, copy/paste the suggested output from the terraform output.  A session will look like this:
+Create a second ssh session to the on-premises Ubuntu instance that is running coredns, copy / paste the suggested output from the Terraform output.  A session will look like this:
 ```
 ssh root@...
 ...
@@ -91,8 +91,8 @@ curl $glb/instance
 
 while sleep 1; do curl --connect-timeout 2 $glb/instance; done
 ```
-## start/stop instances with ibmcloud cli
-If you have the ibmcloud cli you can stop/start the instances from a third terminal.  Or you can skip this section and use the IBM Cloud Console.
+## start / stop instances with IBM Cloud CLI
+If you have the IBM Cloud CLI you can stop / start the instances from a third terminal.  Or you can skip this section and use the IBM Cloud Console.
 ```
 $ terraform output cloud
 {
@@ -110,8 +110,8 @@ Type      stop
 Created   2022-06-30T13:25:25-07:00
 ```
 
-## start/stop instances with IBM Cloud Console
-In a browser visit the [VPC Instances](https://cloud.ibm.com/vpc-ext/compute/vs) and notice there are instances with names based on zones.  The instances can be **Stopped** using the menu on the far right.  Click on the menu then click **Stop** on a few and observe the curl in the while loop.  When you stop all of the instances in a zone notice the failure pattern.
+## start / stop instances with IBM Cloud Console
+In a browser visit the [VPC Instances](https://cloud.ibm.com/vpc-ext/compute/vs) and notice there are instances with names based on zones.  The instances can be **Stopped** using the menu on the far right. Click on the menu then click **Stop** on a few and observe the curl in the while loop.  When you stop all of the instances in a zone notice the failure pattern.
 
 Example, stopping us-south-1-0:
 
@@ -197,14 +197,14 @@ root@dnsglb1-onprem:~# curl 10.0.1.132/instance
 dnsglb1-us-south-2-0
 ```
 
-Try ssh to the instances and curl localhost:
+Try to ssh to the instances and to curl localhost:
 
 ```
 root@dnsglb1-us-south-1-0:~# curl localhost/instance
 dnsglb1-us-south-1-0
 ```
 
-It will not be possible to curl the local IP address of the instances.  This is a side effect of connecting them to the NLB:
+It will not be possible to curl the local IP address of the instances. This is a side effect of connecting them to the NLB:
 ```
 root@dnsglb1-us-south-1-0:~# curl 10.0.1.4
 ^C
@@ -219,7 +219,7 @@ dnsglb1-us-south-2-0
 
 ## Schematics
 
-Schematics is an IBM Cloud service that builds resources and maintains state.  You can use this instead of terraform on your laptop.
+Schematics is an IBM Cloud service that builds resources and maintains state. You can use this instead of Terraform on your laptop.
 
 Create resources using schematics:
 - Log in to the IBM Cloud.
