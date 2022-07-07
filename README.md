@@ -1,11 +1,12 @@
 # Private regional high availability for scalable workloads
 
-This is a companion repository to the following blog post (link to come).
+This is a companion repository to the blog post: [On-Premises Private Access to Workloads Across Zones Using a DNS GLB and VPC NLB
+](https://www.ibm.com/cloud/blog/on-premises-private-access-to-workloads-across-zones-using-a-dns-glb-and-vpc-nlb).
 
 ![image](https://user-images.githubusercontent.com/6932057/176736173-ddad609c-85be-448e-a10a-d4bfbecedec4.png)
 
 
-## Deploy resources
+## Deploy...
 
 ### Terraform
 
